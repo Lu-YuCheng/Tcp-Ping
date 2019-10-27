@@ -70,9 +70,6 @@ int main(int argc, char **argv)
 
         // set socket option
         setsockopt(fd[i], SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
-
-        // notify how many msg will be sent
-        send(fd[i], &number, sizeof(number), 0);
     }
 
     // ping
