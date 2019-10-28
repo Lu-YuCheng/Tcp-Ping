@@ -48,7 +48,7 @@ int main(int argc, char **argv)
 
     // var used in while
     struct sockaddr_in client_addr;
-    int addr_len = sizeof(client_addr);
+    socklen_t addr_len = sizeof(client_addr);
 
     while(1) {
         rfds = master;
@@ -57,7 +57,7 @@ int main(int argc, char **argv)
             if(FD_ISSET(fd, &rfds)) {
                 // accept new connection
                 if(fd == listen_fd) {
-                    int client_fd = accept(listen_fd, (struct sockaddr*) &client_addr, (socklen_t*)&addr_len);
+                    int client_fd = accept(listen_fd, (struct sockaddr*) &client_addr, &addr_len);
                     if(client_fd < 0) {
                         perror("accept");
                         exit(1);
@@ -70,6 +70,7 @@ int main(int argc, char **argv)
                 // read and write
                 else {
                     int msg;
+                    char buf[256];
                     int nbytes = recv(fd, &msg, sizeof(int), 0);
                     if(nbytes < 0) {
                         perror("recv");
@@ -80,8 +81,8 @@ int main(int argc, char **argv)
                     }
                     else {
                         send(fd, &msg, sizeof(int), 0);
-                        getpeername(fd, (struct sockaddr*) &client_addr, (socklen_t*)&addr_len);
-                        printf("recv from %s:%hu\n", inet_ntoa(client_addr.sin_addr),client_addr.sin_port);
+                        getpeername(fd, (struct sockaddr*) &client_addr, &addr_len);
+                        printf("recv from %s:%hu\n", inet_ntop(AF_INET,&client_addr.sin_addr,buf,256),client_addr.sin_port);
                     }
                 }
             }
