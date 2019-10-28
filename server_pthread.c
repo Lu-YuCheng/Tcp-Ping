@@ -8,6 +8,9 @@
 #include <sys/types.h>
 #include <sys/time.h>
 
+int retval[2] = {0,1};
+int client_number = 0;
+void cleanup_handler(void *arg);
 void *client_handler(void *arg);
 typedef struct
 {
@@ -49,39 +52,43 @@ int main(int argc, char **argv)
         exit(0);
     }
 
-    // pthread var
-    pthread_t thread_id;
-
     while(1) {
+        if(client_number > 5)
+            sleep(1);
         Client_info *client = (Client_info *)malloc(sizeof(Client_info));
+        pthread_t thread_id;
         client->fd = accept(listen_fd, (struct sockaddr*) &(client->addr), &(client->addr_len));
         pthread_create(&thread_id, NULL, client_handler, client);
     }
     return 0;
 }
-int retval[2] = {0,1};
 void *client_handler(void *arg) {
+    // set up cleanup fnt 
+    pthread_cleanup_push(cleanup_handler, (void *)arg);
+    client_number++;
+
     Client_info *client = (Client_info *)arg;
     client->addr_len = sizeof(client->addr);
     if(client->fd < 0) {
         perror("accept");
         pthread_exit(&retval);
     }
+
     // read and write
     int msg;
     char ip[32];
     int nbytes; 
+    int flag = 1;
 
-    while(1) {
+    while(flag) {
         nbytes = recv(client->fd, &msg, sizeof(int), 0);
-        printf("thread_id = %d, nbytes = %d\n", getpid(), nbytes);
         if(nbytes < 0) {
             perror("recv");
             pthread_exit(&(retval[1]));
         }
         else if(nbytes == 0) {
             shutdown(client->fd, SHUT_RDWR);
-            break;
+            flag = 0;
         }
         else {
             send(client->fd, &msg, sizeof(int), 0);
@@ -90,5 +97,13 @@ void *client_handler(void *arg) {
         }
     }
 
+    // call cleanup fnt
+    pthread_cleanup_pop(1);
+
     pthread_exit(&(retval[0]));
+}
+void cleanup_handler(void *arg) {
+    Client_info *client = (Client_info *)arg;
+    free(client);
+    client_number--;
 }
